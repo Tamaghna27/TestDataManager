@@ -7,36 +7,36 @@ To Run the project -
 2) Build Solution and Run/Debug using Menu option.
 
 There are two projects in the solution provided
-#clDM
+# clDM
 This is the class library which contains DataManager class, where all the functionalities like laod data,load schema,select,project,
 groupBy and show are coded.
 
-loadData()
+loadData():
 It takes a path as input and reads the json file mentioed in the path to create a Table based on the data provided
 Input - String Path 
 Output - Void
 
-loadSchema()
+loadSchema():
 It takes a path as input and reads the json file mentioed in the path to create a dictionary based on the data provided
 Input - String Path 
 Output - Void
 
-show()
+show():
 It will display the content of the current table(which contains data from JSON or modified data)
 Input - None
 Output - Void
 
-project()
+project():
 It will take array of column names. The final table after projection will contain a new Data Manager with only the specified columns.
 Input - String array
 Output - new DataManager instance
 
-groupBy()
+groupBy():
 It will take a column name in string format. The final table after group by will contain a new Data Manager with only the specified dimension column and aggregated ( mean ) of measure coluns.
 Input - String 
 Output - new DataManager instance
 
-select()
+select():
 It will take a condition as a function and return a new Data Manger instance with only those particular items satisfying the mentioned condition.
 Input - function 
 Output - new DataManager instance
