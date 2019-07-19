@@ -17,9 +17,9 @@ namespace TestDM
             dm.show();
             DataManager projectDm = dm.project(new string[] { "Maker", "Horsepower", "Origin" });
             projectDm.show();
-            DataManager groupByDm = dm.groupBy("Maker"); ;
+            DataManager groupByDm = dm.groupBy("Maker"); 
             groupByDm.show();
-            DataManager selectedDm = dm.select(p => (long)p["Displacement"] < 30);
+            DataManager selectedDm = dm.select(p => (long)p["Displacement"] > 300);
             selectedDm.show();
             Console.ReadKey();
         }

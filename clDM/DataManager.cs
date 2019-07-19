@@ -1,18 +1,18 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+﻿
 using System;
-using System.Reflection;
 using System.Collections.Generic;
 using System.Data;
 using System.Dynamic;
 using System.IO;
 using System.Linq;
+using System.Web.Script.Serialization;
 
 namespace clDM
 {
     public class DataManager
     {
         List<dynamic> dataFeed;
+        dynamic[,] arrFeed;
         DataTable tblFeed;
         Dictionary<string, string> schema;
         dynamic DataIP = new ExpandoObject();
@@ -24,11 +24,50 @@ namespace clDM
                 using (StreamReader r = new StreamReader(sourcePath))
                 {
                     string json = r.ReadToEnd();
-                    dataFeed = JsonConvert.DeserializeObject<List<dynamic>>(json);
-                    var token = JToken.Parse(json);
-                    if (token.Type == JTokenType.Object)
-                        token = new JArray(token);
-                    tblFeed = token.ToObject<DataTable>();
+                    JavaScriptSerializer js = new JavaScriptSerializer();
+                    var k = js.Deserialize<dynamic>(json);
+
+                    //Row count
+                    int count = 0;
+                    foreach (dynamic row in k)
+                    {
+                        count++;
+                    }
+                        //Populate Header
+                        int i = 0;
+                    foreach (dynamic row in k)
+                    {                        
+                        int j = 0;
+                        if (i == 0)
+                        {
+                            arrFeed = new dynamic[count, row.Count];
+                            foreach (System.Collections.Generic.KeyValuePair<string, dynamic> col in row)
+                            {
+                                
+                                arrFeed[i, j] = (dynamic)col;
+                                j++;
+                            }
+                            i++;
+                        }
+                        else
+                            break;
+                    }
+                    
+                    //dataFeed = JsonConvert.DeserializeObject<List<dynamic>>(json);
+                     i = 0;
+                    foreach (dynamic row in k)
+                    {
+                        int j = 0;
+                        foreach (System.Collections.Generic.KeyValuePair<string,dynamic> col in row)
+                        {
+                            
+                            arrFeed[i,getIndex(col.Key)] = col;
+                                j++;
+                        }
+                        i++;
+                    }
+
+                 
                 }
             }
             catch (Exception ex)
@@ -39,7 +78,17 @@ namespace clDM
 
         }
 
+        private int  getIndex(string colName)
+        {            
+            int colCount = arrFeed.GetLength(1);
+            for (int i=0;i<colCount;i++)
+            {
+                if (arrFeed[0, i].Key == colName)
+                    return i;                
+            }
+            return 0;
 
+        }
 
         public void loadSchema(string sourcePath)
         {
@@ -48,14 +97,19 @@ namespace clDM
                 using (StreamReader r = new StreamReader(sourcePath))
                 {
                     string json = r.ReadToEnd();
-                    dynamic items = JsonConvert.DeserializeObject(json);
+                    JavaScriptSerializer js = new JavaScriptSerializer();
+                    var items = js.Deserialize<dynamic>(json);                 
                     schema = new Dictionary<string, string>();
-                    DataTable dtFeed = new DataTable();
-                    foreach (dynamic item in items.schema)
+
+                    var k = ((System.Collections.Generic.Dictionary < string, dynamic>)items).Values;
+                    foreach (dynamic item in k)
                     {
-                        dtFeed.Columns.Add(item.name.Value);
-                        schema.Add(item.name.Value, item.type.Value);
-                        //Console.WriteLine(item.name + item.type);
+                        foreach (System.Collections.Generic.Dictionary<string, dynamic> col in item)
+                        {                           
+                            schema.Add(col.First().Value, col.Last().Value);
+                            //Console.WriteLine(item.name + item.type);
+                        }
+                          
                     }
                 }
             }
@@ -73,26 +127,40 @@ namespace clDM
         {
             try
             {
-                foreach (dynamic col in tblFeed.Columns)
-                {
-                    if (col.Ordinal == tblFeed.Columns.Count - 1)
-                        Console.Write(col.ColumnName);
-                    else
-                        Console.Write(col.ColumnName + " , ");
-                }
 
-                foreach (dynamic row in tblFeed.Rows)
+                int rowCount = arrFeed.GetLength(0);
+                int colCount = arrFeed.GetLength(1);
+
+                for (int i = 0; i < rowCount; i++)
                 {
-                    Console.WriteLine();
-                    for (int i = 0; i <= tblFeed.Columns.Count - 1; i++)
+                    for (int j = 0; j < colCount; j++)
                     {
-                        if (i == tblFeed.Columns.Count - 1)
-                            Console.Write(row[i]);
-                        else
-                            Console.Write(row[i] + " , ");
+                        if(i==0)
+                        {
+                            if (j == colCount - 1)
+                                Console.Write(arrFeed[i, j].Key);
+                            else
+                                Console.Write(arrFeed[i, j].Key + " , ");
+                        }
+                       
                     }
+                    if (i == 0)
+                        Console.WriteLine();
+                    else
+                        break;
                 }
-                Console.WriteLine();
+                for (int i = 0;i<rowCount;i++)
+                {
+                    for (int j = 0; j < colCount; j++)
+                    {
+                        if (j==colCount-1)
+                            Console.Write(arrFeed[i,j].Value);
+                        else
+                            Console.Write(arrFeed[i, j].Value + " , ");
+                    }
+                    Console.WriteLine();
+                }
+               
             }
             catch (Exception ex)
             {
@@ -112,10 +180,25 @@ namespace clDM
                 Dictionary<string, string> schemaNew;
                 schemaNew = schema.Where(a => arr.Contains(a.Key)).ToDictionary(entry => entry.Key,
                                                    entry => entry.Value);
-                DataView view = new System.Data.DataView(tblFeed);
-                DataTable selected = view.ToTable("Selected", false, arr);
+                int rowCount = arrFeed.GetLength(0);
+                int colCount = arrFeed.GetLength(1);
+                dynamic[,] arrFeedProject =  new dynamic[rowCount, schemaNew.Count];
+     
+                int p = 0;
+                for (int j=0;j< colCount;j++)
+                {
+                    
+                    if(arr.ToList().Contains(arrFeed[0,j].Key))
+                    {
+                        for (int i = 0; i < rowCount; i++)
+                        {
+                            arrFeedProject[i, p] = arrFeed[i, j];
+                        }
+                        p++;
+                    }
+                }
 
-                dm.tblFeed = selected;
+                dm.arrFeed = arrFeedProject;
                 dm.schema = schemaNew;
 
             }
@@ -139,35 +222,70 @@ namespace clDM
                 Dictionary<string, string> schemaNew;
                 schemaNew = schema.Where(a => (a.Key == col && a.Value == "dimension") || (a.Key != col && a.Value != "dimension")).ToDictionary(entry => entry.Key,
                                                    entry => entry.Value);
-                DataView view = new System.Data.DataView(tblFeed);
-                DataTable selected =
-                        view.ToTable("Selected", false, schemaNew.Keys.ToArray<string>());
-                foreach (DataRow row in selected.Rows)
+
+                int rowCount = arrFeed.GetLength(0);
+                int colCount = arrFeed.GetLength(1);
+                dynamic[,] arrFeedProject = new dynamic[rowCount, schemaNew.Count];
+                List<dynamic> distinctElem = new List<dynamic>();
+              
+                int p = 0;
+                for (int j = 0; j < colCount; j++)
                 {
-                    foreach (var par in schemaNew.Keys)
+
+                    if (schemaNew.Keys.ToArray<string>().ToList().Contains(arrFeed[0, j].Key))
                     {
-                        if (par != col)
-                            if (row.IsNull(par))
-                                row[par] = 0;
+                        for (int i = 0; i < rowCount; i++)
+                        {
+                            arrFeedProject[i, p] = arrFeed[i, j];
+                            if(arrFeed[0, j].Key==col)
+                            {
+                                if (!distinctElem.Contains(arrFeed[i, j].Value))
+                                    distinctElem.Add(arrFeed[i, j].Value);
+                            }
+                        }
+                        p++;
                     }
                 }
-
-                DataTable grouped = selected.AsEnumerable().GroupBy(r => r.Field<string>(col)).Select(g =>
+                
+                dynamic[,] arrGroupBy= new dynamic[distinctElem.Count, schemaNew.Count];
+                colCount = schemaNew.Count;
+                int g = 0;
+                for (int j = 0; j < colCount; j++)
                 {
-                    var row = selected.NewRow();
 
-                    row[col] = g.Key;
-                    foreach (var par in schemaNew.Keys)
+                    if (arrFeedProject[0, j].Key==col)
                     {
-                        if (par != col)
-                            row[par] = g.Average(r => r.Field<long>(par));
+                        
+                        for (int i = 0; i < distinctElem.Count; i++)
+                        {
+                            int repeat = 0;
+                            for (int m = 0; m < rowCount; m++)
+                            {                                
+                               if(distinctElem.ElementAt(i)==arrFeedProject[m,j].Value)
+                                {
+                                    for(int n=0;n<colCount;n++)
+                                    {
+                                        if (repeat==0)
+                                            arrGroupBy[i, n] = arrFeedProject[m, n];
+                                        else if (schemaNew[arrFeedProject[m, n].Key] != "dimension")
+                                            arrGroupBy[i, n] = new KeyValuePair<string,dynamic>(arrGroupBy[i, n].Key, (arrGroupBy[i, n].Value==null? 0 : arrGroupBy[i, n].Value) + (arrFeedProject[m, n].Value==null? 0: arrFeedProject[m, n].Value));
+                                    }
+                                    repeat++;
+                                }
+                            }
+                            for (int n = 0; n < colCount; n++)
+                            {
+                                if (schemaNew[arrGroupBy[i, n].Key] != "dimension")
+                                    arrGroupBy[i, n] = new KeyValuePair<string, dynamic>(arrGroupBy[i, n].Key, Math.Round((decimal)(arrGroupBy[i, n].Value == null ? 0 : arrGroupBy[i, n].Value) / repeat,0));
+                            }
+                               
 
+                        }
+                        g++;
                     }
-                    return row;
-                }).CopyToDataTable();
+                }              
 
-
-                dm.tblFeed = grouped;
+                dm.arrFeed = arrGroupBy;
                 dm.schema = schemaNew;
                 return dm;
             }
@@ -181,15 +299,45 @@ namespace clDM
             }
         }
 
-        public DataManager select(Func<DataRow, bool> condition)//Func<dynamic, bool> condition
+        public DataManager select(Func<Dictionary<dynamic,dynamic>, bool> condition)//Func<dynamic, bool> condition
         {
             DataManager dm = new DataManager();
 
             try
             {
-                DataTable view = tblFeed.Clone();
-                DataTable selected = tblFeed.AsEnumerable().Where(condition).CopyToDataTable();
-                dm.tblFeed = selected;
+                int rowCount = arrFeed.GetLength(0);
+                int colCount = arrFeed.GetLength(1);
+                dynamic[,] arrFeedSelect = new dynamic[rowCount, colCount];
+                List<dynamic> arr = new List<dynamic>();
+                
+                int p = 0;
+                for (int i = 0; i < rowCount; i++)
+                {
+                    
+                    var t=Enumerable.Range(0, arrFeed.GetLength(1))
+                .Select(x => arrFeed[i, x])
+                .ToList().ToDictionary(row => row.Key,row => row.Value);
+                   
+                    if (condition(t))
+                    {
+                        for (int j = 0; j < colCount; j++)
+                        {
+                            arrFeedSelect[p, j] = arrFeed[i, j];
+                        }
+                        p++;
+                    }
+                    
+                }
+                dynamic[,] arrFeedSelect1 = new dynamic[p, colCount];
+                for (int i = 0; i < p; i++)
+                {
+                    for (int j = 0; j < colCount; j++)
+                    {
+                        arrFeedSelect1[i, j] = arrFeedSelect[i, j];
+                    }
+                }
+                   
+                    dm.arrFeed = arrFeedSelect1;
                 dm.schema = schema;
             }
             catch (Exception ex)
