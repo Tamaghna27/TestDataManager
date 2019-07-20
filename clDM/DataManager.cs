@@ -12,8 +12,7 @@ namespace clDM
     public class DataManager
     {
         List<dynamic> dataFeed;
-        dynamic[,] arrFeed;
-        DataTable tblFeed;
+        dynamic[,] arrFeed;        
         Dictionary<string, string> schema;
         dynamic DataIP = new ExpandoObject();
 
@@ -33,7 +32,7 @@ namespace clDM
                     {
                         count++;
                     }
-                        //Populate Header
+                        //Populate First Row
                         int i = 0;
                     foreach (dynamic row in k)
                     {                        
@@ -206,7 +205,7 @@ namespace clDM
             {
                 Console.WriteLine("Issue in project operation");
                 Console.WriteLine(ex.InnerException);
-                dm.tblFeed = tblFeed;
+                dm.arrFeed = arrFeed;
                 dm.schema = schema;
             }
             return dm;
@@ -293,7 +292,7 @@ namespace clDM
             {
                 Console.WriteLine("Group By operation failed.");
                 Console.WriteLine(ex.InnerException);
-                dm.tblFeed = tblFeed;
+                dm.arrFeed = arrFeed;
                 dm.schema = schema;
                 return dm;
             }
@@ -320,6 +319,7 @@ namespace clDM
                    
                     if (condition(t))
                     {
+                        //copy row
                         for (int j = 0; j < colCount; j++)
                         {
                             arrFeedSelect[p, j] = arrFeed[i, j];
@@ -344,7 +344,7 @@ namespace clDM
             {
                 Console.WriteLine("Issue in select condition");
                 Console.WriteLine(ex.InnerException);
-                dm.tblFeed = tblFeed;
+                dm.arrFeed = arrFeed;
                 dm.schema = schema;
             }
             return dm;
